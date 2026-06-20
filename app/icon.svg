@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Hintergrund: Abgerundetes Quadrat im typischen Nofels-Rot -->
+  <rect width="32" height="32" rx="7" fill="#8a1a1a"/>
+  
+  <!-- Abstraktes, minimalistisches Nikolaus-Symbol in edlem Gold -->
+  <path d="M16 6 L23 15 L21 25 L11 25 L9 15 Z" fill="none" stroke="#b89146" stroke-width="2" stroke-linejoin="round"/>
+  
+  <!-- Das traditionelle, feine Kreuz im Zentrum -->
+  <path d="M16 11 L16 20 M13 14 L19 14" stroke="#b89146" stroke-width="2" stroke-linecap="round"/>
+</svg>
