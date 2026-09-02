@@ -2,8 +2,8 @@ Anmeldeportal für den Nikolausbesuch in Nofels. [Next.js](https://nextjs.org), 
 
 ## Anmeldungen
 
-Das Formular nutzt **Netlify Forms** – es gibt keinen eigenen Server, keinen
-E-Mail-Versand und keine Secrets im Code.
+Das Formular nutzt **Netlify Forms** – kein eigener Server, keine Secrets im
+Frontend-Code.
 
 - Die statische Datei `public/__forms.html` registriert das Formular (`nikolaus-anmeldung`)
   und seine Felder beim Netlify-Build. Sie wird niemals angezeigt.
@@ -13,6 +13,32 @@ E-Mail-Versand und keine Secrets im Code.
   Benachrichtigungen (E-Mail/Slack) unter *Forms → Settings & notifications*.
 - Lokal (`npm run dev`) schlägt das Absenden mit einem 405 fehl – das ist normal,
   Netlify Forms greift nur im Deploy. Zum lokalen Testen `netlify dev` verwenden.
+
+### PDF-Anhang je Anmeldung
+
+Nach jeder (nicht als Spam markierten) Anmeldung ruft Netlify automatisch die
+Funktion `netlify/functions/submission-created.mjs` auf. Sie baut aus der
+Anmeldung ein übersichtliches A4-PDF (`pdf-lib`) und schickt es per Gmail
+(`nodemailer`) als E-Mail-Anhang – zusätzlich zur normalen Netlify-Benachrichtigung.
+
+Benötigte Umgebungsvariablen (in **Netlify → Site configuration → Environment
+variables**, nicht im Repo – siehe `.env.example`):
+
+| Variable | Zweck |
+| --- | --- |
+| `EMAIL_USER` | Gmail-Adresse, die die Mail sendet |
+| `EMAIL_PASS` | Gmail App-Passwort (16 Zeichen) |
+| `NOTIFY_EMAIL` | Empfänger (optional, sonst `EMAIL_USER`) |
+
+Fehlen die Variablen, wird das PDF still übersprungen – die Anmeldung geht
+trotzdem nicht verloren (Netlify-Dashboard + Standard-Benachrichtigung).
+
+PDF-Layout und Handler lokal testen (kein Mailversand):
+
+```bash
+node scripts/test-anmeldung-pdf.mjs ./test-output
+```
+
 
 ## Getting Started
 

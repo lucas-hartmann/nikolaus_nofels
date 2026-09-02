@@ -262,6 +262,14 @@ export default function NikolausAnmeldung() {
           ausweichZeit: zeitLabel(formData.ausweichZeit),
           anzahlPersonen: String(personen.length),
           personen: personenText,
+          personenJson: JSON.stringify(
+            personen.map((p) => ({
+              vorname: p.vorname.trim(),
+              alter: p.alter.trim(),
+              lob: p.lob.trim(),
+              vorlieben: p.vorlieben.trim(),
+            })),
+          ),
           einwilligung: "Ja",
         }),
       });
