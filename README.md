@@ -1,4 +1,18 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Anmeldeportal für den Nikolausbesuch in Nofels. [Next.js](https://nextjs.org), gehostet auf Netlify.
+
+## Anmeldungen
+
+Das Formular nutzt **Netlify Forms** – es gibt keinen eigenen Server, keinen
+E-Mail-Versand und keine Secrets im Code.
+
+- Die statische Datei `public/__forms.html` registriert das Formular (`nikolaus-anmeldung`)
+  und seine Felder beim Netlify-Build. Sie wird niemals angezeigt.
+- Die React-Seite (`app/page.tsx`) sendet die Daten als `POST` an `/__forms.html`.
+  Feldliste in beiden Dateien synchron halten.
+- Eingegangene Anmeldungen: **Netlify → Site → Forms**. Dort als CSV exportierbar;
+  Benachrichtigungen (E-Mail/Slack) unter *Forms → Settings & notifications*.
+- Lokal (`npm run dev`) schlägt das Absenden mit einem 405 fehl – das ist normal,
+  Netlify Forms greift nur im Deploy. Zum lokalen Testen `netlify dev` verwenden.
 
 ## Getting Started
 

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Netlify form detection</title>
+  </head>
+  <body>
+    <!--
+      This file exists only so Netlify's build bot registers the form and its
+      fields. It is never shown to visitors. The real form is the React page,
+      which POSTs url-encoded data to /__forms.html with a matching form-name.
+      Keep the field list here in sync with app/page.tsx.
+    -->
+    <form name="nikolaus-anmeldung" data-netlify="true" data-netlify-honeypot="bot-field" hidden>
+      <input type="text" name="name" />
+      <input type="tel" name="telefon" />
+      <input type="text" name="adresse" />
+      <input type="text" name="terminTag" />
+      <input type="text" name="terminZeit" />
+      <input type="text" name="ausweichTag" />
+      <input type="text" name="ausweichZeit" />
+      <input type="text" name="anzahlPersonen" />
+      <textarea name="personen"></textarea>
+      <input type="text" name="einwilligung" />
+      <input type="text" name="bot-field" />
+    </form>
+  </body>
+</html>
