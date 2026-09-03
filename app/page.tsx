@@ -307,7 +307,7 @@ export default function NikolausAnmeldung() {
   };
 
   return (
-    <main className="bg-paper text-ink selection:bg-accent/10 selection:text-accent">
+    <main className="relative z-10 text-ink selection:bg-accent/10 selection:text-accent">
       {/* Hero */}
       <header className="mx-auto max-w-4xl px-5 pt-20 pb-14 text-center sm:px-8 sm:pt-32 sm:pb-24">
         <p className={eyebrow}>Nikolausverein Nofels</p>
