@@ -11,9 +11,9 @@ interface Person {
 }
 
 const TAGE = [
-  { value: "Freitag, 5.12.", label: "Freitag, 5. Dez." },
-  { value: "Samstag, 6.12.", label: "Samstag, 6. Dez." },
-  { value: "Sonntag, 7.12.", label: "Sonntag, 7. Dez." },
+  { value: "Freitag, 4.12.", label: "Freitag, 4. Dez." },
+  { value: "Samstag, 5.12.", label: "Samstag, 5. Dez." },
+  { value: "Sonntag, 6.12.", label: "Sonntag, 6. Dez." },
 ] as const;
 
 const ZEITEN = [
@@ -336,7 +336,7 @@ export default function NikolausAnmeldung() {
           <dl className="space-y-3.5 text-[16px]">
             <div className="flex items-center justify-between gap-4 border-b border-line-soft pb-3.5">
               <dt className="text-ink-2">Besuchstage</dt>
-              <dd className="text-right font-medium">5., 6. &amp; 7. Dezember</dd>
+              <dd className="text-right font-medium">4., 5. &amp; 6. Dezember</dd>
             </div>
             <div className="flex items-center justify-between gap-4 border-b border-line-soft pb-3.5">
               <dt className="text-ink-2">Uhrzeit</dt>
@@ -345,7 +345,7 @@ export default function NikolausAnmeldung() {
             <div className="flex items-center justify-between gap-4">
               <dt className="font-semibold text-accent">Anmeldeschluss</dt>
               <dd className="text-right font-semibold text-accent">
-                Di, 2. Dez, 17:00 Uhr
+                Di, 1. Dez, 17:00 Uhr
               </dd>
             </div>
           </dl>
