@@ -11,9 +11,9 @@ interface Person {
 }
 
 const TAGE = [
-  { value: "Freitag, 4.12.", label: "Freitag, 4. Dez." },
   { value: "Samstag, 5.12.", label: "Samstag, 5. Dez." },
   { value: "Sonntag, 6.12.", label: "Sonntag, 6. Dez." },
+  { value: "Montag, 7.12.", label: "Montag, 7. Dez." },
 ] as const;
 
 const ZEITEN = [
@@ -135,14 +135,6 @@ export default function NikolausAnmeldung() {
   const setField = (key: keyof typeof formData, value: string) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
 
-  // Picking a Wunschtermin day clears an Ausweichtermin day that would collide.
-  const handleWunschTag = (value: string) =>
-    setFormData((prev) => ({
-      ...prev,
-      terminTag: value,
-      ausweichTag: prev.ausweichTag === value ? "" : prev.ausweichTag,
-    }));
-
   const handlePersonChange = (
     id: string,
     field: keyof Omit<Person, "id">,
@@ -197,14 +189,15 @@ export default function NikolausAnmeldung() {
     }
 
     if (!formData.ausweichTag || !formData.ausweichZeit) {
-      return fail(
-        "Bitte wählen Sie einen Ausweichtermin (Tag und Uhrzeit) an einem anderen Tag.",
-      );
+      return fail("Bitte wählen Sie einen Ausweichtermin (Tag und Uhrzeit).");
     }
 
-    if (formData.ausweichTag === formData.terminTag) {
+    if (
+      formData.ausweichTag === formData.terminTag &&
+      formData.ausweichZeit === formData.terminZeit
+    ) {
       return fail(
-        "Der Ausweichtermin muss an einem anderen Tag als der Wunschtermin liegen.",
+        "Ausweichtermin und Wunschtermin dürfen nicht exakt gleich sein (gleicher Tag, gleiche Uhrzeit).",
       );
     }
 
@@ -302,7 +295,7 @@ export default function NikolausAnmeldung() {
     <main className="relative z-10 text-ink selection:bg-accent/10 selection:text-accent">
       {/* Hero */}
       <header className="mx-auto max-w-4xl px-5 pt-20 pb-14 text-center sm:px-8 sm:pt-32 sm:pb-24">
-        <p className={eyebrow}>Nikolausverein Nofels</p>
+        <p className={eyebrow}>Nofler Klosa Truppe</p>
         <h1 className="mt-6 font-serif text-[2.375rem] leading-[1.12] tracking-tight text-ink sm:text-6xl md:text-7xl">
           Der Nikolausbesuch
           <br />
@@ -336,7 +329,7 @@ export default function NikolausAnmeldung() {
           <dl className="space-y-3.5 text-[16px]">
             <div className="flex items-center justify-between gap-4 border-b border-line-soft pb-3.5">
               <dt className="text-ink-2">Besuchstage</dt>
-              <dd className="text-right font-medium">4., 5. &amp; 6. Dezember</dd>
+              <dd className="text-right font-medium">5., 6. &amp; 7. Dezember</dd>
             </div>
             <div className="flex items-center justify-between gap-4 border-b border-line-soft pb-3.5">
               <dt className="text-ink-2">Uhrzeit</dt>
@@ -345,12 +338,12 @@ export default function NikolausAnmeldung() {
             <div className="flex items-center justify-between gap-4">
               <dt className="font-semibold text-accent">Anmeldeschluss</dt>
               <dd className="text-right font-semibold text-accent">
-                Di, 1. Dez, 17:00 Uhr
+                Fr, 1. Dez, 18:00 Uhr
               </dd>
             </div>
           </dl>
           <p className="text-[14px] leading-relaxed text-ink-3">
-            Die freiwilligen Spenden werden ausnahmslos für soziale Fälle im Dorf
+            Die freiwilligen Spenden werden für soziale Fälle im Dorf
             verwendet.
           </p>
         </div>
@@ -468,7 +461,7 @@ export default function NikolausAnmeldung() {
                   name="wunsch-tag"
                   options={TAGE}
                   value={formData.terminTag}
-                  onChange={handleWunschTag}
+                  onChange={(v) => setField("terminTag", v)}
                 />
               </div>
               <div className="space-y-3">
@@ -488,8 +481,9 @@ export default function NikolausAnmeldung() {
                 Ausweichtermin *
               </p>
               <p className={helpText}>
-                Muss an einem <strong className="text-ink-2">anderen Tag</strong>{" "}
-                als der Wunschtermin liegen.
+                Darf am gleichen Tag liegen – nur nicht exakt der{" "}
+                <strong className="text-ink-2">gleiche Termin</strong> wie der
+                Wunschtermin.
               </p>
               <div className="space-y-3">
                 <p className="text-[14px] font-medium text-ink-2">Tag</p>
@@ -498,7 +492,6 @@ export default function NikolausAnmeldung() {
                   options={TAGE}
                   value={formData.ausweichTag}
                   onChange={(v) => setField("ausweichTag", v)}
-                  disabledValue={formData.terminTag}
                 />
               </div>
               <div className="space-y-3">
@@ -508,6 +501,12 @@ export default function NikolausAnmeldung() {
                   options={ZEITEN}
                   value={formData.ausweichZeit}
                   onChange={(v) => setField("ausweichZeit", v)}
+                  disabledValue={
+                    formData.ausweichTag &&
+                    formData.ausweichTag === formData.terminTag
+                      ? formData.terminZeit
+                      : undefined
+                  }
                 />
               </div>
             </div>
