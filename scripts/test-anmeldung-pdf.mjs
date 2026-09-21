@@ -139,7 +139,7 @@ ok(
   body.includes("Lob: Sehr hilfsbereit") && body.includes("Hobbys / Vorlieben / Interessen:"),
   "text body has per-person lob + hobbys lines",
 );
-ok(body.includes("als PDF angehängt"), "text body mentions the PDF attachment");
+ok(body.includes("A4-PDF") && body.includes("angehängt"), "text body mentions the PDF attachment");
 
 console.log("\n=== slugName ===");
 ok(slugName("Familie Müller-Öhringer") === "Familie_Müller_Öhringer", slugName("Familie Müller-Öhringer"));

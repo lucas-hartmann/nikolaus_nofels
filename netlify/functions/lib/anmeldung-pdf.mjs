@@ -2,16 +2,20 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 /* A4 in PostScript points */
 const PAGE = [595.28, 841.89];
-const M = 56; // page margin
-const LABEL_W = 120; // width of the label column
-const GAP = 12; // gap between label and value column
+const M = 50; // page margin
+const FOOTER = 34; // space kept free at the bottom for the page footer
 
-const INK = rgb(0.11, 0.11, 0.1);
-const MUTED = rgb(0.36, 0.34, 0.31);
+/* Print-friendly sizing: all content text is 20pt. */
+const SIZE = 20;
+const LINE = 26;
+const TITLE = 30;
+const FOOT_SIZE = 14;
+
+const INK = rgb(0.08, 0.08, 0.08);
+const MUTED = rgb(0.32, 0.3, 0.28);
 const ACCENT = rgb(0.54, 0.1, 0.1);
 const GOLD = rgb(0.72, 0.57, 0.27);
-const HAIRLINE = rgb(0.88, 0.87, 0.85);
-const BOXBG = rgb(0.98, 0.975, 0.965);
+const HAIRLINE = rgb(0.8, 0.78, 0.75);
 
 /* pdf-lib's standard Helvetica uses WinAnsi encoding, which covers German
    umlauts and common typographic punctuation. Anything outside it would throw,
@@ -23,23 +27,44 @@ function clean(value) {
     .replace(/[“”„«»]/g, '"')
     .replace(/[–—−]/g, "-")
     .replace(/…/g, "...")
-    .replace(/ /g, " ")
+    .replace(/ /g, " ")
     .replace(/\t/g, "  ")
     // last resort: drop anything still outside the Latin-1 range
     .replace(/[^\x09\x0A\x20-\xFF]/g, "");
 }
 
+/* Break a single over-long word (no spaces) so it can never overflow the page. */
+function breakWord(word, font, size, maxWidth) {
+  const parts = [];
+  let current = "";
+  for (const ch of word) {
+    if (current && font.widthOfTextAtSize(current + ch, size) > maxWidth) {
+      parts.push(current);
+      current = ch;
+    } else {
+      current += ch;
+    }
+  }
+  if (current) parts.push(current);
+  return parts;
+}
+
 function wrapLine(text, font, size, maxWidth) {
-  const words = text.split(/ +/);
   const lines = [];
   let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (current && font.widthOfTextAtSize(candidate, size) > maxWidth) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = candidate;
+  for (const word of text.split(/ +/)) {
+    const pieces =
+      font.widthOfTextAtSize(word, size) > maxWidth
+        ? breakWord(word, font, size, maxWidth)
+        : [word];
+    for (const piece of pieces) {
+      const candidate = current ? `${current} ${piece}` : piece;
+      if (current && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+        lines.push(current);
+        current = piece;
+      } else {
+        current = candidate;
+      }
     }
   }
   if (current) lines.push(current);
@@ -72,156 +97,160 @@ export async function buildAnmeldungPdf(data) {
   pdf.setTitle("Nikolaus-Anmeldung");
   pdf.setProducer("nikolausnofels.netlify.app");
 
-  let page = pdf.addPage(PAGE);
   const width = PAGE[0];
   const contentW = width - M * 2;
+  const bottom = M + FOOTER;
+
+  let page = pdf.addPage(PAGE);
   let y = PAGE[1] - M;
 
   const room = (needed) => {
-    if (y - needed < M) {
+    if (y - needed < bottom) {
       page = pdf.addPage(PAGE);
       y = PAGE[1] - M;
     }
   };
 
-  const text = (str, x, size, f = font, color = INK) => {
-    page.drawText(clean(str), { x, y, size, font: f, color });
-  };
-
-  const hr = (color = HAIRLINE, pad = 0) => {
+  const hr = (color = HAIRLINE, thickness = 0.75) => {
     page.drawLine({
-      start: { x: M + pad, y },
-      end: { x: width - M - pad, y },
-      thickness: 0.75,
+      start: { x: M, y },
+      end: { x: width - M, y },
+      thickness,
       color,
     });
   };
 
-  // ---- Header ---------------------------------------------------------------
-  const year = (data.eingegangen ?? new Date()).getFullYear();
-  text(`Nikolaus-Anmeldung ${year}`, M, 22, bold, ACCENT);
-  y -= 12;
-  hr(GOLD);
-  y -= 28;
+  /* One baseline of text; y marks the baseline of the line just drawn. */
+  const line = (str, f = font, color = INK, size = SIZE) => {
+    room(LINE);
+    y -= LINE;
+    page.drawText(clean(str), { x: M, y, size, font: f, color });
+  };
 
-  // ---- Section helper -----------------------------------------------------
+  const paragraph = (str, f = font, color = INK) => {
+    for (const l of wrapText(str, f, SIZE, contentW)) line(l, f, color);
+  };
+
+  /* Bold label followed by its value underneath. Label + first value line
+     stay together on one page. */
+  const field = (label, value) => {
+    room(LINE * 2);
+    line(label, bold, MUTED);
+    paragraph(value || "-");
+    y -= 10;
+  };
+
   const section = (title) => {
-    room(46);
-    text(title.toUpperCase(), M, 10.5, bold, GOLD);
+    room(LINE * 3);
+    y -= 14;
+    line(title, bold, ACCENT);
+    y -= 6;
+    hr(GOLD, 1.25);
     y -= 8;
-    hr();
-    y -= 20;
   };
 
-  const row = (label, value) => {
-    const size = 11;
-    const lineH = 15;
-    const lines = wrapText(value || "-", font, size, contentW - LABEL_W - GAP);
-    room(Math.max(lineH, lines.length * lineH) + 6);
-    text(label, M, size, bold, MUTED);
-    lines.forEach((line, i) => {
-      page.drawText(line, {
-        x: M + LABEL_W + GAP,
-        y: y - i * lineH,
-        size,
-        font,
-        color: INK,
-      });
-    });
-    y -= lines.length * lineH + 8;
-  };
+  // ---- Header ---------------------------------------------------------------
+  const eingegangen = data.eingegangen ?? new Date();
+  y -= TITLE;
+  page.drawText(`Nikolaus-Anmeldung ${eingegangen.getFullYear()}`, {
+    x: M,
+    y,
+    size: TITLE,
+    font: bold,
+    color: ACCENT,
+  });
+  y -= 14;
+  hr(GOLD, 1.5);
+  y -= 6;
 
-  // ---- Kontakt -----------------------------------------------------------
+  // ---- Kontakt --------------------------------------------------------------
   section("Kontakt");
-  row("Name", data.name);
-  row("Telefon", data.telefon);
-  row("Adresse", data.adresse);
-  y -= 10;
+  field("Name", data.name);
+  field("Telefon", data.telefon);
+  field("Adresse", data.adresse);
 
-  // ---- Termin ----------------------------------------------------------
+  // ---- Termin ---------------------------------------------------------------
   section("Termin");
-  row(
+  field(
     "Wunschtermin",
     [data.terminTag, data.terminZeit].filter(Boolean).join("  ·  "),
   );
-  row(
+  field(
     "Ausweichtermin",
     [data.ausweichTag, data.ausweichZeit].filter(Boolean).join("  ·  "),
   );
-  y -= 10;
 
-  // ---- Personen --------------------------------------------------------
+  // ---- Personen -------------------------------------------------------------
   const personen = Array.isArray(data.personen) ? data.personen : [];
   section(`Personen im Haus (${personen.length})`);
 
   personen.forEach((p, index) => {
-    const size = 11;
-    const lineH = 15;
-    const innerW = contentW - 28;
-
-    const nameLine = `${index + 1}.  ${clean(p.vorname) || "-"}${
-      p.alter ? `   (${clean(p.alter)})` : ""
-    }`;
-    const lobLines = wrapText(`Lob:  ${p.lob || "-"}`, font, size, innerW);
-    const hobbyLines = wrapText(
-      `Hobbys / Vorlieben / Interessen:  ${p.vorlieben || "-"}`,
-      font,
-      size,
-      innerW,
+    // keep the person heading together with its first label + text line
+    room(LINE * 4);
+    if (index > 0) {
+      y -= 6;
+      hr();
+      y -= 10;
+    }
+    line(
+      `${index + 1}.  ${clean(p.vorname) || "-"}${
+        p.alter ? `   (${clean(p.alter)})` : ""
+      }`,
+      bold,
+      INK,
     );
-
-    const blockH = 16 + (lobLines.length + hobbyLines.length) * lineH + 20;
-    room(blockH + 8);
-
-    const boxTop = y + 6;
-    const boxBottom = y - (blockH - 12);
-    page.drawRectangle({
-      x: M,
-      y: boxBottom,
-      width: contentW,
-      height: boxTop - boxBottom,
-      color: BOXBG,
-      borderColor: HAIRLINE,
-      borderWidth: 0.75,
-    });
-
+    y -= 4;
+    line("Lob", bold, MUTED);
+    paragraph(p.lob || "-");
     y -= 6;
-    page.drawText(clean(nameLine), {
-      x: M + 14,
-      y,
-      size: 11.5,
-      font: bold,
-      color: INK,
-    });
-    y -= lineH + 4;
-    [...lobLines, ...hobbyLines].forEach((line) => {
-      page.drawText(line, { x: M + 14, y, size, font, color: MUTED });
-      y -= lineH;
-    });
-    y -= 16;
+    room(LINE * 2);
+    line("Hobbys, Vorlieben & Interessen", bold, MUTED);
+    paragraph(p.vorlieben || "-");
+    y -= 10;
   });
 
   if (personen.length === 0) {
-    text("Keine Personen angegeben.", M, 11, italic, MUTED);
-    y -= 20;
+    line("Keine Personen angegeben.", italic, MUTED);
   }
 
-  // ---- Footer ---------------------------------------------------------
-  y -= 8;
-  room(50);
-  hr();
-  y -= 18;
-  row(
+  // ---- Abschluss ------------------------------------------------------------
+  section("Abschluss");
+  field(
     "Einwilligung",
     data.einwilligung
       ? `${data.einwilligung} (Daten nur zur Organisation des Besuchs)`
       : "-",
   );
-  const stamp = (data.eingegangen ?? new Date()).toLocaleString("de-AT", {
-    dateStyle: "medium",
-    timeStyle: "short",
+  field(
+    "Eingegangen",
+    eingegangen.toLocaleString("de-AT", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Europe/Vienna",
+    }),
+  );
+
+  // ---- Footer on every page ---------------------------------------------------
+  const pages = pdf.getPages();
+  const who = clean(data.name) || "Anmeldung";
+  pages.forEach((pg, i) => {
+    pg.drawText(`Nikolaus-Anmeldung - ${who}`, {
+      x: M,
+      y: M - 6,
+      size: FOOT_SIZE,
+      font,
+      color: MUTED,
+      maxWidth: contentW - 90,
+    });
+    const label = `Seite ${i + 1} / ${pages.length}`;
+    pg.drawText(label, {
+      x: width - M - font.widthOfTextAtSize(label, FOOT_SIZE),
+      y: M - 6,
+      size: FOOT_SIZE,
+      font,
+      color: MUTED,
+    });
   });
-  row("Eingegangen", stamp);
 
   return pdf.save();
 }
@@ -252,7 +281,7 @@ export function buildAnmeldungText(data) {
     ``,
     `Einwilligung: ${data.einwilligung || "-"}`,
     ``,
-    `Die vollständige Anmeldung im A4-Format ist als PDF angehängt.`,
+    `Die vollständige Anmeldung ist als druckfertiges A4-PDF (Schriftgröße 20) angehängt.`,
   );
   return lines.join("\n");
 }
