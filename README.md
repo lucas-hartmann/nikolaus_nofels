@@ -11,6 +11,9 @@ Frontend-Code.
   Feldliste in beiden Dateien synchron halten.
 - Eingegangene Anmeldungen: **Netlify → Site → Forms**. Dort als CSV exportierbar;
   Benachrichtigungen (E-Mail/Slack) unter *Forms → Settings & notifications*.
+- **Anmeldefenster:** das Formular ist nur zwischen `OPEN_AT` und `CLOSE_AT` aktiv (aktuell 9. Nov 2026 bis 1. Dez 2026, 18:00 Uhr, Wiener Zeit) und
+  sonst abgeblendet und gesperrt. Die Zeiten stehen in `app/anmeldefenster.ts`; Test: `node --experimental-strip-types scripts/test-anmeldefenster.mjs`.
+  Die Sperre gilt im Browser – Netlify selbst nimmt direkte POSTs weiterhin an.
 - Lokal (`npm run dev`) schlägt das Absenden mit einem 405 fehl – das ist normal,
   Netlify Forms greift nur im Deploy. Zum lokalen Testen `netlify dev` verwenden.
 

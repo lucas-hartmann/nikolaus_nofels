@@ -4,12 +4,17 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 const PAGE = [595.28, 841.89];
 const M = 50; // page margin
 const FOOTER = 34; // space kept free at the bottom for the page footer
+const LABEL_W = 120; // label column width for the compact rows
 
-/* Print-friendly sizing: all content text is 20pt. */
-const SIZE = 20;
-const LINE = 26;
-const TITLE = 30;
-const FOOT_SIZE = 14;
+/* Only the people are set large (20 pt, for reading on paper); contact,
+   appointment and closing data stay compact at 11 pt. */
+const BASE = 11;
+const BASE_LINE = 15;
+const PERSON = 20;
+const PERSON_LINE = 26;
+const TITLE = 18;
+const SECTION = 12;
+const FOOT_SIZE = 9;
 
 const INK = rgb(0.08, 0.08, 0.08);
 const MUTED = rgb(0.32, 0.3, 0.28);
@@ -120,34 +125,40 @@ export async function buildAnmeldungPdf(data) {
     });
   };
 
-  /* One baseline of text; y marks the baseline of the line just drawn. */
-  const line = (str, f = font, color = INK, size = SIZE) => {
-    room(LINE);
-    y -= LINE;
-    page.drawText(clean(str), { x: M, y, size, font: f, color });
-  };
-
-  const paragraph = (str, f = font, color = INK) => {
-    for (const l of wrapText(str, f, SIZE, contentW)) line(l, f, color);
-  };
-
-  /* Bold label followed by its value underneath. Label + first value line
-     stay together on one page. */
-  const field = (label, value) => {
-    room(LINE * 2);
-    line(label, bold, MUTED);
-    paragraph(value || "-");
-    y -= 10;
+  /* One line of text; y ends on the baseline of the line just drawn. */
+  const line = (str, { f = font, color = INK, size, lineH, x = M }) => {
+    room(lineH);
+    y -= lineH;
+    page.drawText(clean(str), { x, y, size, font: f, color });
   };
 
   const section = (title) => {
-    room(LINE * 3);
+    room(SECTION + 40);
     y -= 14;
-    line(title, bold, ACCENT);
-    y -= 6;
+    line(title, { f: bold, color: ACCENT, size: SECTION, lineH: SECTION + 4 });
+    y -= 5;
     hr(GOLD, 1.25);
-    y -= 8;
+    y -= 4;
   };
+
+  /* Compact 11 pt row: bold label on the left, wrapped value on the right. */
+  const row = (label, value) => {
+    const lines = wrapText(value || "-", font, BASE, contentW - LABEL_W);
+    room(BASE_LINE * Math.min(lines.length, 2));
+    const top = y;
+    line(label, { f: bold, color: MUTED, size: BASE, lineH: BASE_LINE });
+    y = top;
+    lines.forEach((l) =>
+      line(l, { size: BASE, lineH: BASE_LINE, x: M + LABEL_W }),
+    );
+    y -= 4;
+  };
+
+  /* 20 pt block used for the people. */
+  const big = (str, f = font, color = INK) =>
+    wrapText(str, f, PERSON, contentW).forEach((l) =>
+      line(l, { f, color, size: PERSON, lineH: PERSON_LINE }),
+    );
 
   // ---- Header ---------------------------------------------------------------
   const eingegangen = data.eingegangen ?? new Date();
@@ -159,69 +170,72 @@ export async function buildAnmeldungPdf(data) {
     font: bold,
     color: ACCENT,
   });
-  y -= 14;
+  y -= 10;
   hr(GOLD, 1.5);
-  y -= 6;
 
   // ---- Kontakt --------------------------------------------------------------
   section("Kontakt");
-  field("Name", data.name);
-  field("Telefon", data.telefon);
-  field("Adresse", data.adresse);
+  row("Name", data.name);
+  row("Telefon", data.telefon);
+  row("Adresse", data.adresse);
 
   // ---- Termin ---------------------------------------------------------------
   section("Termin");
-  field(
+  row(
     "Wunschtermin",
     [data.terminTag, data.terminZeit].filter(Boolean).join("  ·  "),
   );
-  field(
+  row(
     "Ausweichtermin",
     [data.ausweichTag, data.ausweichZeit].filter(Boolean).join("  ·  "),
   );
 
-  // ---- Personen -------------------------------------------------------------
+  // ---- Personen (20 pt) -----------------------------------------------------
   const personen = Array.isArray(data.personen) ? data.personen : [];
   section(`Personen im Haus (${personen.length})`);
 
   personen.forEach((p, index) => {
     // keep the person heading together with its first label + text line
-    room(LINE * 4);
+    room(PERSON_LINE * 4);
     if (index > 0) {
       y -= 6;
       hr();
-      y -= 10;
+      y -= 8;
     }
-    line(
+    big(
       `${index + 1}.  ${clean(p.vorname) || "-"}${
         p.alter ? `   (${clean(p.alter)})` : ""
       }`,
       bold,
-      INK,
     );
     y -= 4;
-    line("Lob", bold, MUTED);
-    paragraph(p.lob || "-");
+    big("Lob", bold, MUTED);
+    big(p.lob || "-");
     y -= 6;
-    room(LINE * 2);
-    line("Hobbys, Vorlieben & Interessen", bold, MUTED);
-    paragraph(p.vorlieben || "-");
+    room(PERSON_LINE * 2);
+    big("Hobbys, Vorlieben & Interessen", bold, MUTED);
+    big(p.vorlieben || "-");
     y -= 10;
   });
 
   if (personen.length === 0) {
-    line("Keine Personen angegeben.", italic, MUTED);
+    line("Keine Personen angegeben.", {
+      f: italic,
+      color: MUTED,
+      size: BASE,
+      lineH: BASE_LINE,
+    });
   }
 
   // ---- Abschluss ------------------------------------------------------------
   section("Abschluss");
-  field(
+  row(
     "Einwilligung",
     data.einwilligung
       ? `${data.einwilligung} (Daten nur zur Organisation des Besuchs)`
       : "-",
   );
-  field(
+  row(
     "Eingegangen",
     eingegangen.toLocaleString("de-AT", {
       dateStyle: "medium",
@@ -281,7 +295,7 @@ export function buildAnmeldungText(data) {
     ``,
     `Einwilligung: ${data.einwilligung || "-"}`,
     ``,
-    `Die vollständige Anmeldung ist als druckfertiges A4-PDF (Schriftgröße 20) angehängt.`,
+    `Die vollständige Anmeldung ist als druckfertiges A4-PDF angehängt.`,
   );
   return lines.join("\n");
 }

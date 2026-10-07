@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useId, useRef, useState } from "react";
+import React, { useId, useRef, useState, useSyncExternalStore } from "react";
+import { getPhase, type Phase } from "./anmeldefenster";
 
 interface Person {
   id: string;
@@ -32,6 +33,15 @@ const encode = (data: Record<string, string>) =>
   Object.keys(data)
     .map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(data[k]))
     .join("&");
+
+/* Re-evaluated every 15 s so the form opens/closes without a reload. The
+   server snapshot is "loading", which keeps hydration identical. */
+const subscribePhase = (onChange: () => void) => {
+  const id = setInterval(onChange, 15_000);
+  return () => clearInterval(id);
+};
+const clientPhase = (): Phase => getPhase(Date.now());
+const serverPhase = (): Phase => "loading";
 
 const emptyPerson = (id: string): Person => ({
   id,
@@ -106,6 +116,7 @@ export default function NikolausAnmeldung() {
   const formId = useId();
   const statusRef = useRef<HTMLDivElement>(null);
   const personCounter = useRef(1);
+  const phase = useSyncExternalStore(subscribePhase, clientPhase, serverPhase);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -168,6 +179,10 @@ export default function NikolausAnmeldung() {
     e.preventDefault();
     if (isSubmitting) return;
     setStatus({ type: null, message: "" });
+
+    if (getPhase(Date.now()) !== "open") {
+      return fail("Die Anmeldung ist derzeit nicht geöffnet.");
+    }
 
     if (
       !formData.name.trim() ||
@@ -343,10 +358,14 @@ export default function NikolausAnmeldung() {
               <dt className="text-ink-2">Uhrzeit</dt>
               <dd className="text-right font-medium">jeweils ab 16:30 Uhr</dd>
             </div>
+            <div className="flex items-center justify-between gap-4 border-b border-line-soft pb-3.5">
+              <dt className="text-ink-2">Anmeldung ab</dt>
+              <dd className="text-right font-medium">Mo, 9. November</dd>
+            </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="font-semibold text-accent">Anmeldeschluss</dt>
               <dd className="text-right font-semibold text-accent">
-                Fr, 1. Dez, 18:00 Uhr
+                Di, 1. Dez, 18:00 Uhr
               </dd>
             </div>
           </dl>
@@ -368,6 +387,24 @@ export default function NikolausAnmeldung() {
           </p>
         </div>
 
+        {(phase === "before" || phase === "closed") && (
+          <div
+            role="status"
+            className="mb-12 rounded-2xl border border-gold/50 bg-card p-6 text-center sm:p-8"
+          >
+            <p className="font-serif text-2xl text-ink">
+              {phase === "before"
+                ? "Die Anmeldung startet am 9. November"
+                : "Die Anmeldung ist geschlossen"}
+            </p>
+            <p className="mt-2 text-[16px] leading-relaxed text-ink-2">
+              {phase === "before"
+                ? "Anmelden können Sie sich vom 9. November bis Dienstag, 1. Dezember, 18:00 Uhr."
+                : "Anmeldeschluss war am Dienstag, 1. Dezember, um 18:00 Uhr. Bei Fragen melden Sie sich bitte telefonisch bei den Ansprechpartnerinnen unten."}
+            </p>
+          </div>
+        )}
+
         <form
           name={FORM_NAME}
           method="POST"
@@ -375,7 +412,13 @@ export default function NikolausAnmeldung() {
           data-netlify-honeypot="bot-field"
           onSubmit={handleSubmit}
           noValidate
-          className="space-y-16"
+          inert={phase !== "open"}
+          className={
+            "space-y-16 transition-opacity " +
+            (phase === "before" || phase === "closed"
+              ? "select-none opacity-45"
+              : "")
+          }
         >
           {/* Netlify needs this in the POST body to route the submission */}
           <input type="hidden" name="form-name" value={FORM_NAME} />
